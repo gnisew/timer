@@ -227,16 +227,16 @@ input:checked + .slider:before {
 
 
 const MODES = {
-    STOPWATCH: 'stopwatch',
     COUNTDOWN: 'countdown',
+    STOPWATCH: 'stopwatch',
     POMODORO: 'pomodoro',
     CLASSROOM: 'classroom',
     HOURLY: 'hourly'
 };
 
 const modeIcons = {
-    [MODES.STOPWATCH]: '⏱️',
     [MODES.COUNTDOWN]: '⌛',
+    [MODES.STOPWATCH]: '⏱️',
     [MODES.POMODORO]: '🍅',
     [MODES.CLASSROOM]: '⏰',
     [MODES.HOURLY]: '⌚'
@@ -276,6 +276,13 @@ const elements = {
     repeatToggle: document.getElementById('repeatToggle'),
     toggles: document.getElementById('toggles')
 };
+
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+}
 
 function padZero(num) {
     return num.toString().padStart(2, '0');
@@ -426,8 +433,28 @@ function setupStopwatchMode() {
     updateButtonStates();
 }
 
-function changeMode() {
-    currentMode = elements.modeSelect.value;
+function changeMode(modeValue) {
+    let newMode;
+    let urlParam;
+    switch(modeValue) {
+        case '1': newMode = MODES.COUNTDOWN; urlParam = '1'; break;
+        case '2': newMode = MODES.STOPWATCH; urlParam = '2'; break;
+        case '3': newMode = MODES.POMODORO; urlParam = '3'; break;
+        case '4': newMode = MODES.CLASSROOM; urlParam = '4'; break;
+        case '5': newMode = MODES.HOURLY; urlParam = '5'; break;
+        default:
+            newMode = elements.modeSelect.value;
+            urlParam = Object.keys(MODES).find(key => MODES[key] === newMode);
+            urlParam = Object.values(MODES).indexOf(newMode) + 1;
+    }
+    
+    currentMode = newMode;
+    elements.modeSelect.value = currentMode;
+
+    const url = new URL(window.location);
+    url.searchParams.set('m', urlParam);
+    window.history.pushState({}, '', url);
+
     updateModeInfo();
     reset();
 
@@ -782,7 +809,7 @@ function updateToggleVisibility() {
 // Event Listeners
 elements.startStopButton.addEventListener('click', startStop);
 elements.resetButton.addEventListener('click', reset);
-elements.modeSelect.addEventListener('change', changeMode);
+elements.modeSelect.addEventListener('change', () => changeMode(elements.modeSelect.value));
 elements.soundToggle.addEventListener('change', toggleSound);
 elements.repeatToggle.addEventListener('change', toggleRepeat);
 elements.recordButton.addEventListener('click', record);
@@ -811,8 +838,14 @@ document.getElementById('applyHourly').addEventListener('click', saveHourlySetti
 updateModeInfo();
 updateDisplay();
 setupStopwatchMode();
-elements.modeSelect.value = MODES.COUNTDOWN;
-changeMode();
+
+const modeParam = getUrlParameter('m');
+if (modeParam) {
+    changeMode(modeParam);
+} else {
+    changeMode('1');
+}
+
 loadSettings();
 setupPresetButtons();
 
