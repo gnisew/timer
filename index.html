@@ -522,14 +522,53 @@ function enableInputs(enable) {
     elements.secondsInput.disabled = !enable;
 }
 
+
 function playSound() {
     const text = currentMode === MODES.HOURLY ? 
         `現在時間是${new Date().getHours()}點${new Date().getMinutes()}分` : 
         '時間到';
-    const encodedText = encodeURIComponent(text);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=zh-TW&client=tw-ob&q=${encodedText}`;
-    new Audio(audioUrl).play();
+
+    if ('speechSynthesis' in window) {
+        // 取消任何正在進行的語音
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW'; 
+        utterance.rate = 1.0;  // 語速
+        utterance.pitch = 1.0; // 音調
+
+        // 獲取可用的語音
+        let voices = window.speechSynthesis.getVoices();
+        
+        // 如果語音列表為空，等待它加載
+        if (voices.length === 0) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                voices = window.speechSynthesis.getVoices();
+                setVoice();
+            };
+        } else {
+            setVoice();
+        }
+
+        function setVoice() {
+            // 嘗試找到中文（台灣）的語音
+            const chineseVoice = voices.find(voice => voice.lang === 'zh-TW' || voice.lang === 'zh-CN');
+            if (chineseVoice) {
+                utterance.voice = chineseVoice;
+            }
+            
+            // 播放語音
+            window.speechSynthesis.speak(utterance);
+        }
+    } else {
+        console.log('瀏覽器不支持 Web Speech API');
+        // 如果瀏覽器不支持 Web Speech API，可以考慮使用原來的方法作為後備
+        const encodedText = encodeURIComponent(text);
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=zh-TW&client=tw-ob&q=${encodedText}`;
+        new Audio(audioUrl).play().catch(error => console.error('播放音頻失敗:', error));
+    }
 }
+
 
 function record() {
     records.push(time);
